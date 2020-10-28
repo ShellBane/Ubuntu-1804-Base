@@ -1,0 +1,88 @@
+{
+    "description": "Packer template for building vagrant box of ubuntu bionic 18 desktop",
+    "variables": {
+        "iso_url": "iso/ubuntu-18.04.5-desktop-amd64.iso",
+        "iso_checksum": "44343bc1373c6dc826ebb58839155c39",
+        "iso_checksum_type": "md5",
+        "keep_registered": "false",
+        "iso_target_path": "iso-packer/",
+        "headless": "false",
+        "vm_description": "Ubuntu-1804-Base",
+        "vm_version": "1.0.0",
+		"username": "vagrant",
+		"password": "{{user `username`}}"
+    },
+    "builders": [{
+        "type": "virtualbox-iso",
+        "guest_os_type": "Ubuntu_64",
+
+        "output_directory": "output",
+        "export_opts": [
+            "--manifest",
+            "--vsys", "0",
+            "--description", "{{user `vm_description`}}",
+            "--version", "{{user `vm_version`}}"
+        ],
+        "http_directory": "http",
+
+        "iso_urls": [
+            "{{ user `iso_url` }}"
+        ],
+        "iso_checksum": "{{ user `iso_checksum` }}",
+        "iso_checksum_type": "{{ user `iso_checksum_type` }}",
+        "ssh_username": "{{user `username`}}",
+        "ssh_password": "{{user `password`}}",
+        "ssh_port": 22,
+        "ssh_wait_timeout": "10000s",
+
+        "disk_size": "40000",
+        "guest_additions_path": "VBoxGuestAdditions_{{.Version}}.iso",
+        "virtualbox_version_file": ".vbox_version",
+        "vboxmanage": [
+            ["modifyvm", "{{.Name}}", "--memory", "1024"],
+            ["modifyvm", "{{.Name}}", "--cpus", "1"]
+        ],
+        "vm_name": "Ubuntu-1804-Base{{ uuid }}",
+        "keep_registered": "{{user `keep_registered`}}",
+        "headless": "{{user `headless`}}",
+
+        "boot_wait": "6s",
+        "boot_command": [
+		    "<esc><esc><f6><esc><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
+            " url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/Ubuntu-1804-Base.cfg ",
+            " keyboard-configuration/layoutcode=us ",
+			" automatic-ubiquity ",
+            " ubiquity/reboot=true ",
+            " languagechooser/language-name=English ",
+            " localechooser/supported-locales=en_US.UTF-8 ",
+            " debian-installer/locale=en_US ",
+            " netcfg/choose_interface=auto ",
+            " boot=casper ",
+            " initrd=/casper/initrd ",
+            " quiet splash noprompt noshell ",
+            " --- <wait><enter>"
+        ],
+
+        "shutdown_command": "echo {{user `password`}} | sudo -S shutdown -P now"
+    }],
+		"provisioners": [{
+				"type": "shell",
+				"script": "scripts/install_base_software.sh",
+				"execute_command": "echo {{user `password`}} | sudo -S -E -H bash '{{.Path}}'"
+			},
+			{
+				"type": "shell",
+				"script": "scripts/setup_vagrant_insecure_keys.sh",
+				"execute_command": "echo {{user `password`}} | sudo -S -E -H bash '{{.Path}}'"
+			}
+		],
+		"post-processors": [
+			[{
+				"type": "vagrant",
+				"compression_level": 9,
+				"keep_input_artifact": true,
+				"output": "output/Ubuntu-1804-Base.box"
+			}
+		]
+    ]
+}
